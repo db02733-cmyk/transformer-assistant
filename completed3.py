@@ -5,20 +5,27 @@
 # ==============================
 
 # ---------- 基礎套件導入 ----------
-import streamlit as st      # Streamlit Web 框架
-import os                  # 作業系統路徑與環境變數
-import json                # JSON 檔案讀寫
-import datetime            # 時間戳記
-import csv                 # CSV 匯出
-import io                  # 記憶體檔案處理
-from openai import OpenAI  # DeepSeek / OpenAI API
+import streamlit as st
+import os
+import json
+import datetime
+import csv
+import io
+from openai import OpenAI
 
-# ---------- 資料庫檔案設定 ----------
-DB_FILE = "transformer_db.json"   # 型號資料庫檔案
+# ==============================
+# 📌 強制設定（解決部署錯誤）
+# ==============================
+os.environ["STREAMLIT_LOG_LEVEL"] = "error"
+
+# ==============================
+# 📌 資料庫檔案
+# ==============================
+DB_FILE = "transformer_db.json"
 
 
 # ============================================================
-# 📌 試驗規則引擎（核心邏輯）
+# 試驗規則
 # 根據變壓器類型與容量，自動產生標準試驗項目
 # ============================================================
 def get_default_tests(trans_type, capacity_mva):
