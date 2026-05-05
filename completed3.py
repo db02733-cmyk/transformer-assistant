@@ -1,6 +1,6 @@
 # ==============================
-# ⚡ 變壓器驗收查詢助手
-# 📌 功能：AI 問答 + 型號管理 + 試驗規則 + 一鍵匯出 + 助手設定 + 刪除型號
+# 變壓器驗收查詢助手
+# 功能包括：AI 問答 + 型號管理 + 試驗規則 + 一鍵匯出 + 助手設定 + 刪除型號
 # ==============================
 
 import streamlit as st
@@ -12,12 +12,12 @@ import io
 from openai import OpenAI
 
 # ==============================
-# 📌 資料庫檔案
+# 資料庫檔案
 # ==============================
 DB_FILE = "transformer_db.json"
 
 # ==============================
-# 📌 試驗規則引擎
+# 試驗規則引擎
 # ==============================
 def get_default_tests(trans_type, capacity_mva):
     routine = [
@@ -61,7 +61,7 @@ def get_default_tests(trans_type, capacity_mva):
     }
 
 # ==============================
-# 📌 資料庫管理
+# 資料庫管理
 # ==============================
 def load_transformer_db():
     if os.path.exists(DB_FILE):
@@ -76,7 +76,7 @@ def save_transformer_db(db):
 TRANSFORMER_DB = load_transformer_db()
 
 # ==============================
-# 📌 匯出功能
+# 匯出功能
 # ==============================
 def export_test_list_csv(model_key=None):
     output = io.StringIO()
@@ -115,7 +115,7 @@ def export_test_list_txt(model_key=None):
     return output.getvalue()
 
 # ==============================
-# 📌 Session 管理
+# Session 函數管理
 # ==============================
 def save_session():
     if st.session_state.current_session:
@@ -157,7 +157,7 @@ def delete_session(name):
         pass
 
 # ==============================
-# 📌 AI 提示詞
+# AI 提示詞
 # ==============================
 def get_system_prompt():
     return (
@@ -167,30 +167,30 @@ def get_system_prompt():
     )
 
 # ==============================
-# 📌 頁面設定
+# 頁面設定
 # ==============================
 st.set_page_config(
     page_title="變壓器驗收查詢助手",
-    page_icon="⚡",
+    page_icon="⚡️",
     layout="centered"
 )
 
-st.title("⚡ 變壓器驗收查詢助手")
+st.title("⚡️ 變壓器驗收查詢助手")
 
 # ==============================
-# 📌 Session State
+# Session State
 # ==============================
 if "message" not in st.session_state:
     st.session_state.message = []
 if "nick_name" not in st.session_state:
-    st.session_state.nick_name = "小甜甜"
+    st.session_state.nick_name = "拉克絲"
 if "nature" not in st.session_state:
-    st.session_state.nature = "御姐風格的成熟台灣姑娘"
+    st.session_state.nature = "不苟言笑較真的性格"
 if "current_session" not in st.session_state:
     st.session_state.current_session = generate_session()
 
 # ==============================
-# 📌 API Key
+# API Key
 # ==============================
 api_key = os.environ.get("DEEPSEEK_API_KEY")
 if not api_key:
@@ -203,14 +203,14 @@ client = OpenAI(
 )
 
 # ==============================
-# 📌 聊天紀錄
+# 聊天紀錄
 # ==============================
 for msg in st.session_state.message:
     with st.chat_message(msg["role"]):
         st.write(msg["content"])
 
 # ==============================
-# 📌 側邊欄
+# 側邊欄
 # ==============================
 with st.sidebar:
     st.subheader("🛠 控制面板")
@@ -224,18 +224,18 @@ with st.sidebar:
             with col1:
                 if st.button("查看資料", use_container_width=True):
                     d = TRANSFORMER_DB[model]
-                    md = f"## 🔌 {d['型號']}\n\n"
+                    md = f"## 🪪 {d['型號']}\n\n"
                     md += f"**類型**：{d.get('類型', '')}\n"
                     md += f"**容量**：{d.get('容量', '')} MVA\n\n"
                     t = d.get("試驗資料", {})
-                    md += "### 🧪 形式試驗\n" + t.get("形式試驗", "") + "\n\n"
-                    md += "### 🔧 常規試驗\n" + t.get("常規試驗", "") + "\n\n"
-                    md += "### ⚡ 特種試驗\n" + t.get("特種試驗", "") + "\n\n"
+                    md += "### 🖥️ 形式試驗\n" + t.get("形式試驗", "") + "\n\n"
+                    md += "### 🛠️ 常規試驗\n" + t.get("常規試驗", "") + "\n\n"
+                    md += "### 🔬 特種試驗\n" + t.get("特種試驗", "") + "\n\n"
                     st.session_state.message.append({"role": "assistant", "content": md})
                     st.rerun()
             with col2:
-                st.download_button("📄 CSV", export_test_list_csv(model), f"{model}.csv", "text/csv", use_container_width=True)
-                st.download_button("📝 TXT", export_test_list_txt(model), f"{model}.txt", "text/plain", use_container_width=True)
+                st.download_button("📃 CSV", export_test_list_csv(model), f"{model}.csv", "text/csv", use_container_width=True)
+                st.download_button("📄 TXT", export_test_list_txt(model), f"{model}.txt", "text/plain", use_container_width=True)
 
     st.divider()
 
@@ -270,7 +270,7 @@ with st.sidebar:
                         "試驗資料": tests
                     }
                     save_transformer_db(TRANSFORMER_DB)
-                    st.success("✅ 型號新增成功")
+                    st.success("👌 型號新增成功")
                     st.rerun()
                 else:
                     st.error("型號已存在或為空")
@@ -302,7 +302,7 @@ with st.sidebar:
     st.divider()
 
     # ---------- 助手資料 ----------
-    st.subheader("🤖 助手資料")
+    st.subheader("💃🏻 助手資料")
     nick = st.text_input("暱稱", value=st.session_state.nick_name, key="nick_input")
     if nick:
         st.session_state.nick_name = nick
@@ -340,7 +340,7 @@ with st.sidebar:
                 st.rerun()
 
 # ==============================
-# 📌 聊天輸入
+# 聊天輸入
 # ==============================
 prompt = st.chat_input("輸入問題或變壓器型號：")
 
@@ -350,13 +350,13 @@ if prompt:
 
     if prompt.upper() in TRANSFORMER_DB:
         d = TRANSFORMER_DB[prompt.upper()]
-        md = f"## 🔌 {d['型號']}\n\n"
+        md = f"## 🪪 {d['型號']}\n\n"
         md += f"**類型**：{d.get('類型', '')}\n"
         md += f"**容量**：{d.get('容量', '')} MVA\n\n"
         t = d.get("試驗資料", {})
-        md += "### 🧪 形式試驗\n" + t.get("形式試驗", "") + "\n\n"
-        md += "### 🔧 常規試驗\n" + t.get("常規試驗", "") + "\n\n"
-        md += "### ⚡ 特種試驗\n" + t.get("特種試驗", "") + "\n\n"
+        md += "### 🖥️ 形式試驗\n" + t.get("形式試驗", "") + "\n\n"
+        md += "### 🛠️ 常規試驗\n" + t.get("常規試驗", "") + "\n\n"
+        md += "### 🔬 特種試驗\n" + t.get("特種試驗", "") + "\n\n"
         st.session_state.message.append({"role": "assistant", "content": md})
     else:
         try:
