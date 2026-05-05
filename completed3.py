@@ -10,6 +10,7 @@ import datetime
 import csv
 import io
 from openai import OpenAI
+from streamlit.elements.lib.form_utils import current_form_id
 
 # ==============================
 # 資料庫檔案
@@ -19,44 +20,65 @@ DB_FILE = "transformer_db.json"
 # ==============================
 # 試驗規則引擎
 # ==============================
-def get_default_tests(trans_type, capacity_mva):
+def get_default_tests(trans_type, capacity_kva):
     routine = [
-        "繞組電阻測量",
-        "電壓比測試與向量確認",
-        "絕緣電阻測量",
-        "介質損失角正切值(tanδ)測量",
-        "油中溶解氣體分析（僅油浸式）" if trans_type == "油浸式" else "絕緣系統電氣強度試驗（僅乾式）",
-        "變壓器油擊穿電壓試驗（僅油浸式）" if trans_type == "油浸式" else "局部放電測量（僅乾式）",
-        "密封性試驗"
+        "1.繞組電阻測量\n",
+        "2.電壓比測試和聯結組標號檢定\n",
+        "3.短路阻抗和負載損耗測量\n",
+        "4.空載電流和空載損耗測量\n",
+        "5.繞組對地絕緣電阻和(或)絕緣系統電容的介質損耗因數(tanδ)的測量(GB 6451)\n",
+        "6.絕緣例行試驗(GB 1094.3)\n",
+        "7.有載分接開關試驗\n",
+        "8.絕緣油試驗（僅油浸式）：變壓器油擊穿電壓試驗必做\n" if trans_type == "油浸式" else "絕緣系統電氣強度試驗（僅乾式）\n",
+        "9.局部放電測量\n"if capacity_kva >= 10000 else "建議進行局部放電測量\n",
+        "10.密封性試驗:應采用氣壓或油壓法"
     ]
 
     type_test = [
-        "溫升試驗",
-        "雷擊衝擊電壓試驗（LI）",
-        "操作衝擊電壓試驗（SI，220kV 及以上）",
-        "短路承受能力試驗（≥10MVA 必做）" if capacity_mva >= 10 else "短路承受能力試驗（推薦）"
+        "溫升試驗(GB 1094.2)\n",
+        "絕緣形式試驗(GB 1094.3)\n",
+        "雷擊衝擊電壓試驗（LI）\n",
+        "操作衝擊電壓試驗（SI，220kV 及以上）\n",
+        "短路承受能力試驗（≥10MVA 必做）\n" if capacity_kva >= 10000 else "短路承受能力試驗（推薦）\n"
     ]
 
     special = []
     if trans_type == "油浸式":
         special += [
-            "油溫升試驗",
-            "熱油循環試驗（≥220kV）" if capacity_mva >= 220 else "油流靜電試驗",
-            "油中含氣量分析（≥110kV）" if capacity_mva >= 110 else ""
+            "熱油循環試驗（≥220kV）\n" if capacity_kva >= 220000 else "油流靜電試驗\n",
+            "油中含氣量分析（≥110kV）\n" if capacity_kva >= 110000 else "\n",
+            "絕緣特殊試驗(GB 1094.3)\n",
+            "繞組對地和繞組間的電容測定\n",
+            "暫態電壓傳輸特性測定\n",
+            "三相變壓器零序阻抗測量\n",
+            "短路承受能力試驗\n",
+            "聲級測定(GB 7328)\n",
+            "空載電流諧波測量\n",
+            "風扇和油泵電機所吸取功率測量:適用於強迫油循環風冷變壓器\n",
+            "絕緣油試驗（僅油浸式）:油中溶解氣體分析(DGA)"
+
         ]
     else:
         special += [
-            "局部放電測量（≤10pC）",
-            "耐火試驗（特殊場所）",
-            "濕熱試驗（沿海地區）"
+            "局部放電測量（≤10pC）\n",
+            "耐火試驗（特殊場所）\n",
+            "濕熱試驗（沿海地區）\n"
+            "絕緣特殊試驗(GB 1094.3)\n",
+            "繞組對地和繞組間的電容測定\n",
+            "暫態電壓傳輸特性測定\n",
+            "三相變壓器零序阻抗測量\n",
+            "短路承受能力試驗\n",
+            "聲級測定(GB 7328)\n",
+            "空載電流諧波測量\n",
+            "風扇和油泵電機所吸取功率測量\n"
         ]
 
-    if capacity_mva >= 240:
-        special += ["頻率響應分析（FRA）", "聲級測定（≤65dB）"]
+    if capacity_kva >= 240000:
+        special += ["頻率響應分析（FRA）\n", "聲級測定（≤65dB）\n"]
 
     return {
-        "形式試驗": "\n".join(filter(None, type_test)),
         "常規試驗": "\n".join(routine),
+        "形式試驗": "\n".join(filter(None, type_test)),
         "特種試驗": "\n".join(filter(None, special))
     }
 
@@ -81,7 +103,7 @@ TRANSFORMER_DB = load_transformer_db()
 def export_test_list_csv(model_key=None):
     output = io.StringIO()
     writer = csv.writer(output)
-    writer.writerow(["型號", "類型", "容量(MVA)", "形式試驗", "常規試驗", "特種試驗"])
+    writer.writerow(["型號", "類型", "額定容量(kVA)","常規試驗", "形式試驗","特種試驗"])
     models = [model_key] if model_key else TRANSFORMER_DB.keys()
     for model in models:
         if model in TRANSFORMER_DB:
@@ -90,9 +112,11 @@ def export_test_list_csv(model_key=None):
             writer.writerow([
                 d.get("型號", ""),
                 d.get("類型", ""),
-                d.get("容量", ""),
-                t.get("形式試驗", "").replace("\n", "； "),
+                d.get("額定容量", ""),
+                d.get("額定電流",""),
+                d.get("額定頻率", ""),
                 t.get("常規試驗", "").replace("\n", "； "),
+                t.get("形式試驗", "").replace("\n", "； "),
                 t.get("特種試驗", "").replace("\n", "； ")
             ])
     return output.getvalue()
@@ -107,10 +131,12 @@ def export_test_list_txt(model_key=None):
             output.write("=" * 60 + "\n")
             output.write(f"型號：{d.get('型號', '')}\n")
             output.write(f"類型：{d.get('類型', '')}\n")
-            output.write(f"容量：{d.get('容量', '')} MVA\n")
+            output.write(f"額定容量：{d.get('額定容量', '')} kVA\n")
+            output.write(f"額定電流：{d.get('額定電流', '')} A\n")
+            output.write(f"額定頻率：{d.get('額定頻率', '')} Hz\n")
             output.write("=" * 60 + "\n\n")
-            output.write("【形式試驗】\n" + t.get("形式試驗", "") + "\n\n")
             output.write("【常規試驗】\n" + t.get("常規試驗", "") + "\n\n")
+            output.write("【形式試驗】\n" + t.get("形式試驗", "") + "\n\n")
             output.write("【特種試驗】\n" + t.get("特種試驗", "") + "\n\n")
     return output.getvalue()
 
@@ -162,8 +188,9 @@ def delete_session(name):
 def get_system_prompt():
     return (
         f"你叫{st.session_state.nick_name}，性格是{st.session_state.nature}。"
-        f"請根據變壓器類型、容量及試驗標準，給出專業驗收建議。"
         f"禁止任何場景或情緒描述文字。"
+        # f"請根據變壓器類型、額定容量及試驗標準，給出專業驗收建議。"
+
     )
 
 # ==============================
@@ -226,10 +253,12 @@ with st.sidebar:
                     d = TRANSFORMER_DB[model]
                     md = f"## 🪪 {d['型號']}\n\n"
                     md += f"**類型**：{d.get('類型', '')}\n"
-                    md += f"**容量**：{d.get('容量', '')} MVA\n\n"
+                    md += f"**額定容量**：{d.get('額定容量', '')} KVA\n\n"
+                    md += f"**額定電流**：{d.get('額定電流', '')} A\n"
+                    md += f"**額定頻率**：{d.get('額定頻率', '')} Hz\n\n"
                     t = d.get("試驗資料", {})
-                    md += "### 🖥️ 形式試驗\n" + t.get("形式試驗", "") + "\n\n"
                     md += "### 🛠️ 常規試驗\n" + t.get("常規試驗", "") + "\n\n"
+                    md += "### 🖥️ 形式試驗\n" + t.get("形式試驗", "") + "\n\n"
                     md += "### 🔬 特種試驗\n" + t.get("特種試驗", "") + "\n\n"
                     st.session_state.message.append({"role": "assistant", "content": md})
                     st.rerun()
@@ -246,17 +275,21 @@ with st.sidebar:
     with st.expander("➕ 新增變壓器型號"):
         with st.form("add"):
             model_id = st.text_input("型號（唯一）*")
-            col1, col2 = st.columns(2)
+            col1, col2, col3 = st.columns(3)
             with col1:
                 trans_type = st.selectbox("類型", ["油浸式", "乾式"])
-                capacity = st.number_input("容量(MVA)", 0.1, step=0.1)
+                capacity = st.number_input("額定容量(kVA)", 0, step=1)
             with col2:
-                voltage = st.text_input("電壓比")
+                voltage = st.text_input("電壓比(kV)")
                 maker = st.text_input("製造商")
+            with col3:
+                current = st.number_input("額定電流(A)", 0, step=10)
+                friquency = st.number_input("頻率(Hz)", 0, step=1)
+
 
             tests = get_default_tests(trans_type, capacity)
-            st.text_area("形式試驗", tests["形式試驗"], height=100, disabled=True)
             st.text_area("常規試驗", tests["常規試驗"], height=100, disabled=True)
+            st.text_area("形式試驗", tests["形式試驗"], height=100, disabled=True)
             st.text_area("特種試驗", tests["特種試驗"], height=100, disabled=True)
 
             if st.form_submit_button("新增", use_container_width=True):
@@ -264,9 +297,11 @@ with st.sidebar:
                     TRANSFORMER_DB[model_id] = {
                         "型號": model_id,
                         "類型": trans_type,
-                        "容量": capacity,
+                        "額定容量": capacity,
                         "電壓比": voltage,
                         "製造商": maker,
+                        "額定電流":current,
+                        "額定頻率":friquency,
                         "試驗資料": tests
                     }
                     save_transformer_db(TRANSFORMER_DB)
@@ -352,10 +387,10 @@ if prompt:
         d = TRANSFORMER_DB[prompt.upper()]
         md = f"## 🪪 {d['型號']}\n\n"
         md += f"**類型**：{d.get('類型', '')}\n"
-        md += f"**容量**：{d.get('容量', '')} MVA\n\n"
+        md += f"**額定容量**：{d.get('額定容量', '')} KVA\n\n"
         t = d.get("試驗資料", {})
-        md += "### 🖥️ 形式試驗\n" + t.get("形式試驗", "") + "\n\n"
         md += "### 🛠️ 常規試驗\n" + t.get("常規試驗", "") + "\n\n"
+        md += "### 🖥️ 形式試驗\n" + t.get("形式試驗", "") + "\n\n"
         md += "### 🔬 特種試驗\n" + t.get("特種試驗", "") + "\n\n"
         st.session_state.message.append({"role": "assistant", "content": md})
     else:
