@@ -1,5 +1,6 @@
 # ==============================
 # ⚡ 變壓器驗收查詢助手
+# 📌 功能：AI 問答 + 型號管理 + 試驗規則 + 一鍵匯出 + 助手設定 + 刪除型號
 # ==============================
 
 import streamlit as st
@@ -11,24 +12,12 @@ import io
 from openai import OpenAI
 
 # ==============================
-# 📌 資料庫
+# 📌 資料庫檔案
 # ==============================
 DB_FILE = "transformer_db.json"
 
-def load_transformer_db():
-    if os.path.exists(DB_FILE):
-        with open(DB_FILE, "r", encoding="utf-8") as f:
-            return json.load(f)
-    return {}
-
-def save_transformer_db(db):
-    with open(DB_FILE, "w", encoding="utf-8") as f:
-        json.dump(db, f, ensure_ascii=False, indent=2)
-
-TRANSFORMER_DB = load_transformer_db()
-
 # ==============================
-# 📌 試驗規則
+# 📌 試驗規則引擎
 # ==============================
 def get_default_tests(trans_type, capacity_mva):
     routine = [
@@ -72,7 +61,22 @@ def get_default_tests(trans_type, capacity_mva):
     }
 
 # ==============================
-# 📌 匯出
+# 📌 資料庫管理
+# ==============================
+def load_transformer_db():
+    if os.path.exists(DB_FILE):
+        with open(DB_FILE, "r", encoding="utf-8") as f:
+            return json.load(f)
+    return {}
+
+def save_transformer_db(db):
+    with open(DB_FILE, "w", encoding="utf-8") as f:
+        json.dump(db, f, ensure_ascii=False, indent=2)
+
+TRANSFORMER_DB = load_transformer_db()
+
+# ==============================
+# 📌 匯出功能
 # ==============================
 def export_test_list_csv(model_key=None):
     output = io.StringIO()
@@ -111,7 +115,7 @@ def export_test_list_txt(model_key=None):
     return output.getvalue()
 
 # ==============================
-# 📌 Session
+# 📌 Session 管理
 # ==============================
 def save_session():
     if st.session_state.current_session:
@@ -153,19 +157,28 @@ def delete_session(name):
         pass
 
 # ==============================
-# 📌 AI
+# 📌 AI 提示詞
 # ==============================
 def get_system_prompt():
-    return f"你叫{st.session_state.nick_name}，性格是{st.session_state.nature}。請給出專業驗收建議。"
+    return (
+        f"你叫{st.session_state.nick_name}，性格是{st.session_state.nature}。"
+        f"請根據變壓器類型、容量及試驗標準，給出專業驗收建議。"
+        f"禁止任何場景或情緒描述文字。"
+    )
 
 # ==============================
-# 📌 頁面
+# 📌 頁面設定
 # ==============================
-st.set_page_config(page_title="變壓器驗收助手", page_icon="⚡", layout="centered")
+st.set_page_config(
+    page_title="變壓器驗收查詢助手",
+    page_icon="⚡",
+    layout="centered"
+)
+
 st.title("⚡ 變壓器驗收查詢助手")
 
 # ==============================
-# 📌 State
+# 📌 Session State
 # ==============================
 if "message" not in st.session_state:
     st.session_state.message = []
@@ -177,7 +190,7 @@ if "current_session" not in st.session_state:
     st.session_state.current_session = generate_session()
 
 # ==============================
-# 📌 API Key（✅ 修正）
+# 📌 API Key
 # ==============================
 api_key = os.environ.get("DEEPSEEK_API_KEY")
 if not api_key:
@@ -203,6 +216,7 @@ with st.sidebar:
     st.subheader("🛠 控制面板")
     mode = st.radio("模式", ["AI 問答", "型號查詢"], horizontal=True)
 
+    # ---------- 型號查詢 ----------
     if mode == "型號查詢":
         model = st.selectbox("選擇型號", ["請選擇"] + list(TRANSFORMER_DB.keys()))
         if model != "請選擇":
@@ -225,9 +239,13 @@ with st.sidebar:
 
     st.divider()
 
-    with st.expander("➕ 新增型號"):
+    # ---------- 型號管理（含新增 + 刪除） ----------
+    st.subheader("📦 型號管理")
+
+    # ➕ 新增型號
+    with st.expander("➕ 新增變壓器型號"):
         with st.form("add"):
-            model_id = st.text_input("型號*")
+            model_id = st.text_input("型號（唯一）*")
             col1, col2 = st.columns(2)
             with col1:
                 trans_type = st.selectbox("類型", ["油浸式", "乾式"])
@@ -252,12 +270,52 @@ with st.sidebar:
                         "試驗資料": tests
                     }
                     save_transformer_db(TRANSFORMER_DB)
-                    st.success("✅ 新增成功")
+                    st.success("✅ 型號新增成功")
                     st.rerun()
                 else:
                     st.error("型號已存在或為空")
 
+    # 🗑️ 刪除型號（✅ 重點回歸）
     st.divider()
+    st.subheader("🗑️ 刪除型號")
+
+    del_model = st.selectbox(
+        "選擇要刪除的型號",
+        ["請選擇"] + list(TRANSFORMER_DB.keys()),
+        key="delete_model_select"
+    )
+
+    if del_model != "請選擇":
+        col1, col2 = st.columns([3, 1])
+        with col1:
+            st.warning(f"⚠️ 確定要刪除型號 **{del_model}** 嗎？此操作無法復原。")
+        with col2:
+            if st.button("確認刪除", type="secondary", use_container_width=True):
+                if del_model in TRANSFORMER_DB:
+                    del TRANSFORMER_DB[del_model]
+                    save_transformer_db(TRANSFORMER_DB)
+                    st.success(f"✅ 型號 {del_model} 已刪除")
+                    st.rerun()
+                else:
+                    st.error("型號不存在")
+
+    st.divider()
+
+    # ---------- 助手資料 ----------
+    st.subheader("🤖 助手資料")
+    nick = st.text_input("暱稱", value=st.session_state.nick_name, key="nick_input")
+    if nick:
+        st.session_state.nick_name = nick
+
+    nature = st.text_area("性格", value=st.session_state.nature, key="nature_input")
+    if nature:
+        st.session_state.nature = nature
+
+    st.caption("💡 修改後立即生效")
+
+    st.divider()
+
+    # ---------- 會話管理 ----------
     if st.button("✏️ 新建會話", use_container_width=True):
         save_session()
         st.session_state.message = []
@@ -265,10 +323,26 @@ with st.sidebar:
         save_session()
         st.rerun()
 
+    st.caption("📂 會話歷史")
+    for s in load_sessions():
+        c1, c2 = st.columns([4, 1])
+        with c1:
+            if st.button(
+                s,
+                width="stretch",
+                type="primary" if s == st.session_state.current_session else "secondary"
+            ):
+                load_session(s)
+                st.rerun()
+        with c2:
+            if st.button("❌", width="stretch", key=f"del_{s}"):
+                delete_session(s)
+                st.rerun()
+
 # ==============================
-# 📌 聊天
+# 📌 聊天輸入
 # ==============================
-prompt = st.chat_input("輸入問題或型號：")
+prompt = st.chat_input("輸入問題或變壓器型號：")
 
 if prompt:
     st.chat_message("user").write(prompt)
