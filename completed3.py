@@ -480,7 +480,7 @@ with st.sidebar:
                         min_value=1.0,
                         max_value=1000.0,
                         value=185.0,
-                        step=5.0
+                        step=1.0
                     )
 
                 with col2:
@@ -676,7 +676,7 @@ with st.sidebar:
                               = {result['max_drop']:.2f} V
 
                         3. 三相最大長度：
-                           L = {result['max_drop']:.2f} × {result['cable_voltage']}
+                           L = {result['max_drop']:.2f}
                                / (√3 × {result['resistivity']:.6f} × {result['fuse_current']} × {power_factor})
                              = {result['max_length']:.2f} m
                             """
